@@ -5,7 +5,7 @@ import bcrypt from "bcrypt";
 const userSchema = new mongoose.Schema(
   {
     username: {
-      trype: String,
+      type: String,
       required: true,
       unique: true,
       trim: true,
@@ -36,8 +36,7 @@ const userSchema = new mongoose.Schema(
       required: true,
     },
     coverImage: {
-      trype: String, // aws url
-      required: true,
+      typeof: String, // aws url
     },
     watchHistory: [{ type: Schema.Types.ObjectId, ref: "Video" }],
     refreshToken: {
