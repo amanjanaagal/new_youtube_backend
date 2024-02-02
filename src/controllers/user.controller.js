@@ -5,31 +5,36 @@ import {User} from "../models/user.model.js"
 
 
 const registerUser = asyncHandler(async (req, res)=>{
-    console.log('user eamil : ' , req.email)
-
-    const {username, email, password, fullName} = req.body;
-    if ([username, email, password, fullName].some((fields)=> fields.trim() === '')) {
-        throw new ApiError(400, "Please fill all the fields")
+    const { username, fullName, password, email } = req.body;
+    console.log("email : " + email);
+  
+    if (
+      [username, fullName, password, email].some((field) => field?.trim() === "")
+    ) {
+      throw new ApiError(400, "please fill in all fields : ");
     }
-
-    const existedUser = await User.findOne({
-        $or: [{username}, {email}]
-    })
-    if (existedUser) {
-        throw new ApiError( 401 , "User already exists in the database !");
+  
+    const existingUser = await User.findOne({
+      $or: [{ username }, { email }],
+    });
+  
+    if (existingUser) {
+      throw new ApiError(409, "User with email or username already exists");
     }
-
-
-    const avatarLocalPath = req.files.avatar ? req.files.avatar?.[0]?.path : req.files.avatar.path;  // for multer middleware to save file in server local directory
-
-    if (!avatarLocalPath) {
-        throw new ApiError(400, "local path file not provided");
-    }else{
-        throw new ApiResponse( 200, "avatar local path uploaded ")
-    }
+  
+    console.log("req . files ", req.files);
+//   const avatarLocalPath = req.files ? req.files.avatar?.[0]?.path : req.files.avatar?.path;
+    const avatarLocalPath = req.files?.avatar?.[0]?.path;
 
     
-
+    if (!avatarLocalPath) {
+        throw new ApiError(400, "Avatar file is required @localpath ");
+    }
+    
+    let coverImageLocalPath;
+    if (req.files && Array.isArray(req.files.coverImage) && req.files.coverImage.length > 0) {
+        coverImageLocalPath = req.files.coverImage[0]?.path;
+    }
 
 
     
