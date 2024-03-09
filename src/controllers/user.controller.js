@@ -182,7 +182,9 @@ const logoutUser = asyncHandler(async (req, res) => {
 });
 
 const refreshAccessToken = asyncHandler(async (req, res) => {
-  const incomingRefreshToken = req.cookie.refreshToken || req.body.refreshToken;
+
+  const incomingRefreshToken = req.cookies.refreshToken || req.body.refreshToken;
+  console.log(incomingRefreshToken + " refresh token ")
 
   if (!incomingRefreshToken) {
     throw new ApiError(401, "Unauthorized request");
@@ -192,9 +194,10 @@ const refreshAccessToken = asyncHandler(async (req, res) => {
     const decodedToken = jwt.verify(
       incomingRefreshToken,
       process.env.REFRESH_TOKEN_SECRET
-    );
+      );
+      console.log(decodedToken)
 
-    const user = User.findById(decodedToken?._id);
+    const user =  await User.findById(decodedToken?._id);
     if (!user) {
       throw new ApiError(401, "Invalid Access Token!");
     }
@@ -207,8 +210,8 @@ const refreshAccessToken = asyncHandler(async (req, res) => {
       httpOnly: true,
       secure: true,
     };
-    const { accessToken, newRefreshToken } =
-      await generateAccessAndRefreshToken(user._id);
+
+    const { accessToken, newRefreshToken } =  await generateAccessAndRefreshToken(user._id);
 
     return res
       .status(200)
@@ -246,24 +249,44 @@ const changeCurrentPassword = asyncHandler(async (req, res) => {
 });
 
 const getCurrentUser = asyncHandler(async (req, res) => {
+  console.log(req.user)
   return res
     .status(200)
-    .json(200, req.user, "Current User fetched successfully");
+    .json(
+      new ApiResponse(200, req.user, "Current User fetched successfully"));
 });
 
 const updateAccountDetails = asyncHandler(async (req, res) => {
-  const { fullName, email } = req.body;
+  let { fullName, email } = req.body;
 
-  if (!fullName || !email) {
-    throw new ApiError(400, "Please provide all the details");
+  const isValidEmail = (email) => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(email);
+  };
+
+  fullName = fullName.trim().replace(/\s+/g, ' ');
+  email = email.trim().replace(/\s+/g, ' ');
+  
+  if (fullName.length < 3 || email.length < 3) {
+    throw new ApiError(400, "Fields must have at least three characters");
   }
+  
 
+  if (!fullName || !email || !isValidEmail(email)) {
+    throw new ApiError(400, "Please provide valid details");
+  }
+  if (email !== req.user.email) {
+    const checkEmailExist = await User.findOne({ email: email.trim() });
+    if (checkEmailExist) {
+      throw new ApiError(400, "Email already exists, try with another email address");
+    }
+  }
   const user = await User.findByIdAndUpdate(
     req.user?._id,
     {
       $set: {
         fullName,
-        email,
+        email
       },
     },
     { new: true }
@@ -312,7 +335,7 @@ const updateUserCoverImage = asyncHandler(async (req, res) => {
     req.user?._id,
     {
       $set: {
-        avatar: coverImage.url,
+        coverImage: coverImage.url,
       },
     },
     { new: true }
@@ -397,7 +420,7 @@ const getWatchHistory = asyncHandler(async (req, res) => {
   const user = await User.aggregate([
     {
       $match: {
-        _id: mongoose.Types.ObjectId(req.user?._id),
+        _id: new mongoose.Types.ObjectId(req.user._id)
       },
     },
     {
